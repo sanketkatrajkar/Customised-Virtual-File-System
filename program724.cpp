@@ -979,4 +979,4 @@ int main ()
 
     return 0;
 
-} /// End of MAIN
+} /// End of main

@@ -51,6 +51,7 @@ using namespace std;
 # define ERR_PERMISSION_DENIED -5
 # define ERR_INSUFFICIENT_SPACE -6
 # define ERR_INSUFFICIENT_DATA -7
+# define ERR_MAX_FILE_OPEN -8
  
 ////////////////////////////////////////////////////////////////////////////////////
 //
@@ -274,7 +275,7 @@ void DsiplayHelp()
     printf("------------------------------------------------------------------------------------\n");
 
     printf("it is use to display the specific manual page for command\n");
-    printf("");
+    printf("------------------------------------------------------------\n");
     printf("exit    : It is use to terminate the shell of Marvellous CVFS\n");
     printf("clear   : It is use to clear the console of Marvellous CVFS\n");
     printf("Creat   : It is use to create new regular file \n");
@@ -282,7 +283,9 @@ void DsiplayHelp()
     printf("ls      : it is use to list out all file from the direcotory \n");
     printf("stat    : it is use to display statistidcal information about file\n");
     printf("write   : it is use to write the data into the file\n");
-    printf("read    : it is use to the data from the file\n");
+    printf("read    : it is use to the read data from the file\n");
+    printf("open    : it is use to the open the file\n");
+
 
     // add more options here
 
@@ -353,6 +356,14 @@ void ManPage(
          printf("Usage : read file_discription_ size\n");
          printf("File_Discripter : its a value raturned byy crate system call\n");
          printf("Size : Number of bytes that you want to read \n");
+
+    }
+    else if(strcmp(name, "read") == 0)
+    {
+         printf("Discription : This command is use open the file \n");
+
+         printf("Usage : read file_discription\n");
+         printf("File_Discripter : its a value raturned by create system call\n");
 
     }// add more options here
     else 
@@ -501,6 +512,198 @@ int CreateFile(
 
    return i;
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+//
+//   Funtion Name : open_file
+//   Discription : It is used to oepn the file 
+//   Input : File name
+//   Ouput : File is succesfully opened with FD number
+//   Author : Sanket Ashok Katrajkar.
+//   Date :  16/08/2025
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+//Marvellous CVFS >> 
+
+int open_file(char *name, int permission)
+{
+    PINODE temp = head;
+    int i = 0;
+
+    // Step 1: Validate parameters
+    if (name == NULL || permission < 1 || permission > 3)
+    {
+        return ERR_INVALID_PARAMETER;
+    }
+
+    // Step 2: Check if file exists
+    if (IsFileExists(name) == false)
+    {
+        return ERR_FILE_NOT_EXISTS;
+    }
+
+    // Step 3: Find inode of given file
+    while (temp != NULL)
+    {
+        if ((strcmp(name, temp->FileName) == 0) && (temp->FileType == REGULAFILE))
+        {
+            break;
+        }
+        temp = temp->next;
+    }
+
+    if (temp == NULL)
+    {
+        return ERR_FILE_NOT_EXISTS;
+    }
+
+    // Step 4: Check permissions
+    if ((temp->Permission != permission) && (temp->Permission != READ + WRITE))
+    {
+        return ERR_PERMISSION_DENIED;
+    }
+
+    // Step 5: Find free UFDT entry
+    for (i = 0; i < MAXOPNEDFILES; i++)
+    {
+        if (uareaobj.UFDT[i] == NULL)
+            break;
+    }
+
+    if (i == MAXOPNEDFILES)
+    {
+        return ERR_MAX_FILE_OPEN;
+    }
+
+    // Step 6: Allocate FileTable memory
+    uareaobj.UFDT[i] = (PFILETABLE)malloc(sizeof(FILETABLE));
+    if (uareaobj.UFDT[i] == NULL)
+    {
+        return ERR_INVALID_PARAMETER; // allocation failed
+    }
+
+    // Step 7: Initialize FileTable
+    uareaobj.UFDT[i]->Count = 1;
+    uareaobj.UFDT[i]->Mode = permission;
+
+    if (permission == READ)
+    {
+        uareaobj.UFDT[i]->ReadOffSet = 0;
+    }
+    else if (permission == WRITE)
+    {
+        uareaobj.UFDT[i]->WriteOffSet = 0;
+    }
+    else if (permission == READ + WRITE)
+    {
+        uareaobj.UFDT[i]->ReadOffSet = 0;
+        uareaobj.UFDT[i]->WriteOffSet = 0;
+    }
+
+    uareaobj.UFDT[i]->ptrinode = temp;
+
+    // Update Reference Count
+    (uareaobj.UFDT[i]->ptrinode->ReferenceCount)++;
+
+    // Step 8: Return File Descriptor
+    return i;
+}
+
+
+// int open_file( 
+//                 char * name,        // Name of the file
+//                 int permission      // Permission of create file
+//              )
+//     {
+//         PINODE temp = head;
+//         int i = 0;
+
+//         // if file name missing or not
+//         if(name == NULL)
+//         {
+//             return ERR_INVALID_PARAMETER;
+//         }
+
+//         // if enter permission is invalid 
+//         if(permission < 1 || permission > 3)
+//         {
+//             return ERR_INVALID_PARAMETER;
+//         }
+
+//         // check the file is exits or not
+//         if(IsFileExists(name) == true)
+//         {
+//             return ERR_FILE_NOT_EXISTS;
+//         }
+
+//         //Find inode of given file
+//        while (temp != NULL)
+//        {
+//            if ((strcmp(name, temp->FileName) == 0) && (temp->FileType == REGULAFILE))
+//            {
+//                break;
+//            }
+//            temp = temp->next;
+//        }
+   
+//        //  if Check permissions
+//        if((temp->Permission != permission) && (temp->Permission != READ + WRITE))
+//        {
+//            return ERR_PERMISSION_DENIED;
+//        }
+   
+//        // Find free UFDT entry
+//        for (i = 0; i < MAXOPNEDFILES; i++)
+//        {
+//            if (uareaobj.UFDT[i] == NULL)
+//                break;
+//        }
+   
+//        if (i == MAXOPNEDFILES)
+//        {
+//            return ERR_MAX_FILE_OPEN;
+//        }
+
+//        if(i == MAXOPNEDFILES)
+//        {
+//            return ERR_MAX_FILE_OPEN;
+//        }  
+
+//         //Allocate FileTable memory
+//         uareaobj.UFDT[i] = (PFILETABLE)malloc(sizeof(FILETABLE));
+
+//         if (uareaobj.UFDT[i] == NULL)
+//         {
+//             return ERR_INVALID_PARAMETER; // allocation failed
+//         }
+   
+//         //Initialize FileTable
+//         uareaobj.UFDT[i]->Count = 1;
+//         uareaobj.UFDT[i]->Mode = permission;
+   
+//         if (permission == READ)
+//         {
+//             uareaobj.UFDT[i]->ReadOffSet = 0;
+//         }
+//         else if (permission == WRITE)
+//         {
+//             uareaobj.UFDT[i]->WriteOffSet = 0;
+//         }
+//         else if (permission == READ + WRITE)
+//         {
+//             uareaobj.UFDT[i]->ReadOffSet = 0;
+//             uareaobj.UFDT[i]->WriteOffSet = 0;
+//         }
+   
+//         uareaobj.UFDT[i]->ptrinode = temp;
+   
+//         // Update Reference Count
+//         (uareaobj.UFDT[i]->ptrinode->ReferenceCount)++;
+   
+//         // Return File Descriptor
+//         return i;
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////
 //
@@ -774,26 +977,6 @@ int read_file(
     uareaobj.UFDT[fd] -> ReadOffSet = uareaobj.UFDT[fd] -> ReadOffSet + size;
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-//
-//   Funtion Name : open_file
-//   Discription : It is used to oepn the file 
-//   Input : file Discripter ,
-//           Adress empty buffer
-//           size of data that we want ot read
-//   Ouput : Number of bytes succesfully read into the fle
-//   Author : Sanket Ashok Katrajkar.
-//   Date :  15/08/2025
-//
-/////////////////////////////////////////////////////////////////////////////////////
-
-//Marvellous CVFS >> 
-
-
-
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
@@ -957,16 +1140,16 @@ int main ()
                } 
                else if(iRet == ERR_FILE_ALREADY_EXITS)
                {
-                 printf("Error : Unable to create file as file already exits\n");
+                 printf("Error : Unable to create the file  already exits\n");
                }
                else
-            {
-                 printf("file is succesfuly created with FD : %d\n",iRet);
-            }
+               {
+                    printf("file is succesfuly created with FD : %d\n",iRet);
+               }
             }
             //Marvellout CVFS > read 3 10
-            else if(strcmp(Command[0], "read") == 0)
-            {
+        else if(strcmp(Command[0], "read") == 0)
+        {
                EmptyBuffer = (char *)malloc(sizeof(atoi(Command[2])));
 
 
@@ -997,12 +1180,38 @@ int main ()
 
                     free(EmptyBuffer);
                  }
-            }
-            else
-            {
+        }
+        else if(strcmp(Command[0], "open") == 0)
+        {
+               iRet = CreateFile(Command[1], atoi(Command[2]));
+
+               if(iRet == ERR_INVALID_PARAMETER)
+               {
+                 printf("Error : Invalid paramerter for function\n");
+                 printf("Please check Man page for more details\n");
+               }
+               else if(iRet == ERR_NO_INODES)
+               {
+                 printf("Error : Unable to create file as there is no INodes ");
+               } 
+               else if(iRet == ERR_FILE_ALREADY_EXITS)
+               {
+                 printf("Error : Unable to opened file as file already exits\n");
+               }
+               else if(iRet == ERR_MAX_FILE_OPEN)
+               {
+                  printf("Error : unable to opened file as file already opened\n");
+               }
+               else 
+               {
+                  printf("File is successfully opened with FD : %d",iRet);
+               } 
+        } /// add more here
+        else
+        {
                  printf("Command not fount \n");
                  printf("Please refer Help option or use man command\n");
-            }
+        }
             
         }   // End of IF ICount == 3
         else if(iCount == 4)

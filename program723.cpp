@@ -14,13 +14,16 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
-//   User fefined Marcros;
+//   User defined Marcros;
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
 # define MAXFILESIZE 100
 
-# define MAXINODE 5
+// Maximum number of files htat we can opned
+# define MAXOPNEDFILES 20  
+// maximum number of file that we can create
+# define MAXINODE 5          
 
 # define READ 1
 # define WRITE 2
@@ -33,6 +36,8 @@ using namespace std;
 # define CURRENT 1
 # define END 2
 
+# define EXICUTE_SUCCESS 0
+
 ////////////////////////////////////////////////////////////////////////////////////
 //
 //   User define  Marcros for error handling
@@ -42,7 +47,10 @@ using namespace std;
 # define ERR_INVALID_PARAMETER -1
 # define ERR_NO_INODES -2
 # define ERR_FILE_ALREADY_EXITS -3
-
+# define ERR_FILE_NOT_EXISTS -4
+# define ERR_PERMISSION_DENIED -5
+# define ERR_INSUFFICIENT_SPACE -6
+ 
 ////////////////////////////////////////////////////////////////////////////////////
 //
 //   Structure Name : BootBlock
@@ -121,7 +129,8 @@ typedef struct FileTable
 struct UAREA
 {
     char ProcessName[50];
-    PFILETABLE UFDT[MAXINODE];
+    PFILETABLE UFDT[MAXOPNEDFILES];
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +159,7 @@ void InitialisseUREA()
 
     int i = 0;
 
-    while( i < MAXINODE)
+    while( i <  MAXOPNEDFILES)
     {
        uareaobj.UFDT[i] = NULL;
        i++;
@@ -201,6 +210,7 @@ void CreateDILB()
         newn -> ActualFileSize = 0;
         newn -> LinkCount = 0;
         newn -> Permission = 0 ;
+        newn -> FileType = 0;
         newn -> Buffer = NULL; 
         newn -> next = NULL;
 
@@ -261,8 +271,14 @@ void DsiplayHelp()
     printf("---------------------- Commad Manual of Marvellous CVFS -----------------------------\n");
     printf("------------------------------------------------------------------------------------\n");
 
+    printf("it is use to display the specific manual page for command\n");
     printf("exit : It is used to terminate the shell of Marvellous CVFS\n");
     printf("clear : It is used to clear the console of Marvellous CVFS\n");
+    printf("Creat :It is use to create new regular file \n");
+    printf("Unlink : it is use to delete the exitsting file \n");
+    printf("ls : it is use to list out all file from the direcotory \n");
+    printf("stat : it is use to display statistidcal information about file\n");
+    printf("write : it is use to write the data into the file\n");
 
     // add more options here
 
@@ -297,9 +313,40 @@ void ManPage(
          printf("Discription : This command is use to exit\n");
          printf("Usage : exit \n");
 
-    } // add more options here
+    } 
+    else if(strcmp(name, "unlink") == 0)
+    {
+         printf("Discription : This command is use to delete to new regual file our file systems\n");
+         printf("Usage : Create  File_name Permission \n");
+         printf("File_name : the name of file that you want to delete \n");
 
-    printf("no manual entry for %s\n",name);
+    }
+     else if(strcmp(name, "stat") == 0)
+    {
+         printf("Discription : This command is use to Dsiplay stastical information aobut the file\n");
+         printf("Usage : stat file_name \n");
+         printf("File_name : the name of file that you want to Display \n");
+
+    }
+     else if(strcmp(name, "ls") == 0)
+    {
+         printf("Discription : This command is use to all infomation about the files from the directory\n");
+
+         printf("Usage : ls \n");
+
+    }
+    else if(strcmp(name, "write") == 0)
+    {
+         printf("Discription : This command is use  write the data into the file\n");
+
+         printf("Usage : Write file_discription \n");
+
+    }// add more options here
+    else 
+    {
+       printf("no manual entry for %s\n",name);
+    }
+
 }
 ///////////////////////////////////////////////////////////////////////////////////
 //
@@ -440,18 +487,208 @@ int CreateFile(
 
 ///////////////////////////////////////////////////////////////////////////////////
 //
-//   Funtion Name : Create DILB
-//   Discription : It is used to  a new regular file 
-//   Input : It accept the file name and permission 
-//   Ouput : It return file discripter  
+//   Funtion Name : Unlink file
+//   Discription : It is used to delete a new regular file 
+//   Input : It accept the file name 
+//   Ouput : nothing 
 //   Author : Sanket Ashok Katrajkar.
 //   Date :  15/08/2025
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
 
+int UnlinkFile(
+                 char *name // name of file 
+               )
+{
+    int i = 0;
+
+    if(name == NULL)
+    {
+        return ERR_INVALID_PARAMETER;
+    }
+
+    if(IsFileExists(name) == false)
+    {
+        return ERR_FILE_NOT_EXISTS;
+    }
+
+    for(i = 0; i< MAXINODE; i++)
+    {
+        if(uareaobj.UFDT[i] != NULL)
+        {
+
+            if(strcmp(uareaobj.UFDT[i] -> ptrinode ->FileName, name) == 0)
+            {
+                 //Deallocate the memory of buffer
+                 free(uareaobj.UFDT[i] -> ptrinode -> Buffer);
+
+                 // Reset of all values of Inode
+                    uareaobj.UFDT[i] -> ptrinode -> FileSize = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> ActualFileSize = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> LinkCount = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> Permission = 0 ;
+                    uareaobj.UFDT[i] -> ptrinode -> FileType = 0;
+                   
+                    //Dealocate mermory of file table
+                    free(uareaobj.UFDT[i]);
+
+                    // Set NULL to UFDT Member
+                    uareaobj.UFDT[i] = NULL;
+
+                    //Increament the value of free iNode counts
+                    superobj.FreeInodes++;
+
+                    break;
+
+            } // End of IF 
+        }  // End of IF 
+    }  // End of for 
+
+    return EXICUTE_SUCCESS;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//
+//   Funtion Name : ls_file
+//   Discription : It is used to a all file in directory 
+//   Input : nothing
+//   Ouput : nothing 
+//   Author : Sanket Ashok Katrajkar.
+//   Date :  15/08/2025
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Marvelous CVSF >> ls 
+
+void ls_file()
+{
+    PINODE temp = head;
+
+    while(temp != NULL)
+    {
+        if(temp -> FileType != 0)
+        {
+            printf("%s\n", temp -> FileName);
+        }
+
+        temp = temp -> next;
+    }
+}
 
 
+///////////////////////////////////////////////////////////////////////////////////
+//
+//   Funtion Name : stat_file
+//   Discription : It is used to a show about the given file 
+//   Input : file name
+//   Ouput : nothing 
+//   Author : Sanket Ashok Katrajkar.
+//   Date :  15/08/2025
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Marvelous CVSF >> stat Demo.txt
+
+int stat_file(char *name)
+{
+    PINODE temp = head;
+
+    if(name == NULL)
+        return ERR_INVALID_PARAMETER;
+
+    if(IsFileExists(name) == false)
+        return ERR_FILE_NOT_EXISTS;
+
+    while(temp != NULL)
+    {
+        if((strcmp(name, temp->FileName) == 0) && (temp->FileType != 0))
+        {
+            printf("--------------- Statistical Information of file ---------------------\n");
+            printf("File name : %s\n", temp->FileName);
+            printf("File Size on Disk : %d\n", temp->FileSize);
+            printf("Actual file size : %d\n", temp->ActualFileSize);
+            printf("Link Count : %d\n", temp->LinkCount);
+            printf("File permission : ");
+            if(temp->Permission == READ) printf("Read\n");
+            else if(temp->Permission == WRITE) printf("Write\n");
+            else if(temp->Permission == READ + WRITE) printf("Read + Write\n");
+
+            printf("File type : ");
+            if(temp->FileType == REGULAFILE) printf("Regular file\n");
+            else if(temp->FileType == SPECIALFILE) printf("Special file\n");
+
+            break;
+        }
+        temp = temp->next;
+    }
+
+    return EXICUTE_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//
+//   Funtion Name : Write_file
+//   Discription : It is used to wirte the contain the file 
+//   Input : file Discripter ,
+//           Adress of buffer which contains the data 
+//           size of data that we want ot write
+//   Ouput : Number of bytes succesfully written into the fle
+//   Author : Sanket Ashok Katrajkar.
+//   Date :  15/08/2025
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Marvelous CVSF >>  write
+
+int write_file( 
+                 int fd,           // file discripter of file 
+                 char *data ,      // data that we want to wirte 
+                 int size          // size of data that we want to write
+            )
+{
+    unsigned long int offset = 0;
+
+    printf("File Discirpter is : %d\n", fd);
+    printf("Data that we want to write : %s\n", data);
+    printf("Number of bytes that we want to write : %d\n", size);
+
+    //Invalid value of fd 
+    if(fd < 0 || fd > MAXOPNEDFILES)
+    {
+        return ERR_INVALID_PARAMETER;
+    }
+
+    //file is not opned or created with the given fd
+    if(uareaobj.UFDT[fd] == NULL)
+    {
+        return ERR_FILE_NOT_EXISTS;
+    }
+      // if there is no permission to write the data into the file
+    if(uareaobj.UFDT[fd] -> ptrinode -> Permission < WRITE)
+    {
+        return ERR_PERMISSION_DENIED;
+    }
+    // Unable to write as ther is no sufficiendt space
+    if((MAXFILESIZE - uareaobj.UFDT[fd] -> WriteOffSet) < size)
+    {
+        return ERR_INSUFFICIENT_SPACE;
+    }
+    //Calculate the actual offset
+    // offset = uareaobj.UFDT[fd]->ptrinode->Buffer + uareaobj.UFDT[fd] -> WriteOffSet;
+
+    // Write the actual data
+    strncpy(uareaobj.UFDT[fd]->ptrinode->Buffer + uareaobj.UFDT[fd] -> WriteOffSet, data, size);
+    
+    //updat the write offset
+    uareaobj.UFDT[fd]-> WriteOffSet = uareaobj.UFDT[fd] -> WriteOffSet + size;
+
+    // write the actual size of ufleafter writeing the new data
+    uareaobj.UFDT[fd]-> ptrinode ->ActualFileSize = uareaobj.UFDT[fd] ->ptrinode ->ActualFileSize + size;
+
+    return size;
+} 
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
@@ -465,6 +702,7 @@ int main ()
     int iCount = 0;
     int iRet = 0;
     char Command[5][80];
+    char InputBuffer[MAXFILESIZE] = {"\0"};
 
     StartAuxilaryDataInitialiser();
 
@@ -501,6 +739,11 @@ int main ()
             {
                   system("cls");
             }
+               //Marvellout CVFS > ls 
+            else if(strcmp(Command[0], "ls") == 0)
+            {
+                ls_file();
+            }
 
         }    // End of IF ICount == 1
         else if(iCount == 2)
@@ -511,6 +754,72 @@ int main ()
             {
                ManPage(Command[1]);
             }
+
+               //Marvellout CVFS > unlimk
+            else if(strcmp(Command[0], "unlink") == 0)
+            {
+                iRet = UnlinkFile(Command[1]);
+
+                if(iRet == EXICUTE_SUCCESS)
+                {
+                    printf("unlink operation is successfully performs\n");
+                }
+                else if(iRet == ERR_FILE_NOT_EXISTS)
+                {
+                    printf("Error : unable to do unlink activity as file is not presenet\n");
+                }
+                else if (iRet == ERR_INVALID_PARAMETER)
+                {
+                   printf("Invalid paramerter \n");
+                   printf(("please check the man page \n"));
+                }
+            }
+            else if(strcmp(Command[0], "stat") == 0)
+            {
+                 iRet = stat_file(Command[1]);
+                 if(iRet == ERR_FILE_NOT_EXISTS)
+                 {
+                     printf("Error : ");
+                 }
+                 if (iRet == ERR_INVALID_PARAMETER)
+                 {
+                    printf("Invalid paramerter \n");
+                    printf(("please check the man page \n"));
+                 }
+            }
+                
+             else if(strcmp(Command[0], "write") == 0)
+             {
+                 printf("List Enter the data that you want to write : \n");
+     
+                 scanf("%[^'\n]s", InputBuffer);
+                 fflush(stdin);
+
+                 iRet = write_file(atoi(Command[1]), InputBuffer, strlen(InputBuffer));
+
+                 if(iRet == ERR_INSUFFICIENT_SPACE)
+                 {
+                    printf("Error : Insufficient space in the data block for the file \n");
+                 }
+                 else if(iRet == ERR_PERMISSION_DENIED)
+                 {
+                    printf("Error : unable to write the as there is no write permissioon \n");
+                 }
+                 else if(iRet == ERR_INVALID_PARAMETER)
+                 {
+                    printf("Error : Invalide paramerter for th function \n");
+                    printf("please check the man page for mroe details\n");
+                 }
+                 else if(iRet == ERR_FILE_NOT_EXISTS)
+                 {
+                    printf("Error : fd in invalide \n");
+                 }
+                 else
+                 {
+                    printf("%d butes get succesfully written into the file \n", iRet);
+                    printf("Data from file is : %s\n", uareaobj.UFDT[0] -> ptrinode -> Buffer);
+                 }
+             }
 
         }    // End of IF ICount == 2
         else if(iCount == 3)

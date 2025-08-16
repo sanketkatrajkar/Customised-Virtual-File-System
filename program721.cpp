@@ -14,13 +14,16 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
-//   User fefined Marcros;
+//   User defined Marcros;
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
 # define MAXFILESIZE 100
 
-# define MAXINODE 5
+// Maximum number of files htat we can opned
+# define MAXOPNEDFILES 20  
+// maximum number of file that we can create
+# define MAXINODE 5          
 
 # define READ 1
 # define WRITE 2
@@ -33,6 +36,8 @@ using namespace std;
 # define CURRENT 1
 # define END 2
 
+# define EXICUTE_SUCCESS 0
+
 ////////////////////////////////////////////////////////////////////////////////////
 //
 //   User define  Marcros for error handling
@@ -42,6 +47,10 @@ using namespace std;
 # define ERR_INVALID_PARAMETER -1
 # define ERR_NO_INODES -2
 # define ERR_FILE_ALREADY_EXITS -3
+
+# define ERR_FILE_NOT_EXISTS -4
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
@@ -121,7 +130,8 @@ typedef struct FileTable
 struct UAREA
 {
     char ProcessName[50];
-    PFILETABLE UFDT[MAXINODE];
+    PFILETABLE UFDT[MAXOPNEDFILES];
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +160,7 @@ void InitialisseUREA()
 
     int i = 0;
 
-    while( i < MAXINODE)
+    while( i <  MAXOPNEDFILES)
     {
        uareaobj.UFDT[i] = NULL;
        i++;
@@ -201,6 +211,7 @@ void CreateDILB()
         newn -> ActualFileSize = 0;
         newn -> LinkCount = 0;
         newn -> Permission = 0 ;
+        newn -> FileType = 0;
         newn -> Buffer = NULL; 
         newn -> next = NULL;
 
@@ -261,8 +272,11 @@ void DsiplayHelp()
     printf("---------------------- Commad Manual of Marvellous CVFS -----------------------------\n");
     printf("------------------------------------------------------------------------------------\n");
 
+    printf("it is use to display the specific manual page for command\n");
     printf("exit : It is used to terminate the shell of Marvellous CVFS\n");
     printf("clear : It is used to clear the console of Marvellous CVFS\n");
+    printf("Creat :It is use to create new regular file \n");
+    printf("Unlink : it is use to delete the exitsting file \n");
 
     // add more options here
 
@@ -297,9 +311,20 @@ void ManPage(
          printf("Discription : This command is use to exit\n");
          printf("Usage : exit \n");
 
-    } // add more options here
+    } 
+    else if(strcmp(name, "unlink") == 0)
+    {
+         printf("Discription : This command is use to delete to new regual file our file systems\n");
+         printf("Usage : Create  File_name Permission \n");
+         printf("File_name : the name of file that you want to delete \n");
+         printf("Permission : \n1 : read \n2 : write  \n3 : read and write");
 
-    printf("no manual entry for %s\n",name);
+    }// add more options here
+    else 
+    {
+       printf("no manual entry for %s\n",name);
+    }
+
 }
 ///////////////////////////////////////////////////////////////////////////////////
 //
@@ -440,16 +465,95 @@ int CreateFile(
 
 ///////////////////////////////////////////////////////////////////////////////////
 //
-//   Funtion Name : Create DILB
-//   Discription : It is used to  a new regular file 
-//   Input : It accept the file name and permission 
-//   Ouput : It return file discripter  
+//   Funtion Name : Unlink file
+//   Discription : It is used to delete a new regular file 
+//   Input : It accept the file name 
+//   Ouput : nothing 
 //   Author : Sanket Ashok Katrajkar.
 //   Date :  15/08/2025
 //
 /////////////////////////////////////////////////////////////////////////////////////
 
 
+int UnlinkFile(
+                 char *name // name of file 
+               )
+{
+    int i = 0;
+
+    if(name == NULL)
+    {
+        return ERR_INVALID_PARAMETER;
+    }
+
+    if(IsFileExists(name) == false)
+    {
+        return ERR_FILE_NOT_EXISTS;
+    }
+
+    for(i = 0; i< MAXINODE; i++)
+    {
+        if(uareaobj.UFDT[i] != NULL)
+        {
+
+            if(strcmp(uareaobj.UFDT[i] -> ptrinode ->FileName, name) == 0)
+            {
+                 //Deallocate the memory of buffer
+                 free(uareaobj.UFDT[i] -> ptrinode -> Buffer);
+
+                 // Reset of all values of Inode
+                    uareaobj.UFDT[i] -> ptrinode -> FileSize = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> ActualFileSize = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> LinkCount = 0;
+                    uareaobj.UFDT[i] -> ptrinode -> Permission = 0 ;
+                    uareaobj.UFDT[i] -> ptrinode -> FileType = 0;
+                   
+                    //Dealocate mermory of file table
+                    free(uareaobj.UFDT[i]);
+
+                    // Set NULL to UFDT Member
+                    uareaobj.UFDT[i] = NULL;
+
+                    //Increament the value of free iNode counts
+                    superobj.FreeInodes++;
+
+                    break;
+
+            } // End of IF 
+        }  // End of IF 
+    }  // End of for 
+
+    return EXICUTE_SUCCESS;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+//
+//   Funtion Name : ls_file
+//   Discription : It is used to a all file in directory 
+//   Input : nothing
+//   Ouput : nothing 
+//   Author : Sanket Ashok Katrajkar.
+//   Date :  15/08/2025
+//
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Marvelous CVSF >> ls 
+
+void ls_file()
+{
+    PINODE temp = head;
+
+    while(temp != NULL)
+    {
+        if(temp -> FileType != 0)
+        {
+            printf("%s\n", temp -> FileName);
+        }
+
+        temp = temp -> next;
+    }
+}
 
 
 
@@ -501,6 +605,11 @@ int main ()
             {
                   system("cls");
             }
+               //Marvellout CVFS > ls 
+            else if(strcmp(Command[0], "ls") == 0)
+            {
+                ls_file();
+            }
 
         }    // End of IF ICount == 1
         else if(iCount == 2)
@@ -510,6 +619,25 @@ int main ()
             if(strcmp(Command[0], "man") == 0)
             {
                ManPage(Command[1]);
+            }
+               //Marvellout CVFS > unlimk
+            else if(strcmp(Command[0], "unlink") == 0)
+            {
+                iRet = UnlinkFile(Command[1]);
+
+                if(iRet == EXICUTE_SUCCESS)
+                {
+                    printf("unlink operation is successfully performs\n");
+                }
+                else if(iRet == ERR_FILE_NOT_EXISTS)
+                {
+                    printf("Error : unable to do unlink activity as file is not presenet\n");
+                }
+                else if (iRet == ERR_INVALID_PARAMETER)
+                {
+                   printf("Invalid paramerter \n");
+                   printf(("please check the man page \n"));
+                }
             }
 
         }    // End of IF ICount == 2

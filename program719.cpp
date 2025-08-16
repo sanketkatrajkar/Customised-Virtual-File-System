@@ -274,15 +274,14 @@ void DsiplayHelp()
     printf("------------------------------------------------------------------------------------\n");
 
     printf("it is use to display the specific manual page for command\n");
-    printf("");
-    printf("exit    : It is use to terminate the shell of Marvellous CVFS\n");
-    printf("clear   : It is use to clear the console of Marvellous CVFS\n");
-    printf("Creat   : It is use to create new regular file \n");
-    printf("Unlink  : it is use to delete the exitsting file \n");
-    printf("ls      : it is use to list out all file from the direcotory \n");
-    printf("stat    : it is use to display statistidcal information about file\n");
-    printf("write   : it is use to write the data into the file\n");
-    printf("read    : it is use to the data from the file\n");
+    printf("exit : It is used to terminate the shell of Marvellous CVFS\n");
+    printf("clear : It is used to clear the console of Marvellous CVFS\n");
+    printf("Creat :It is use to create new regular file \n");
+    printf("Unlink : it is use to delete the exitsting file \n");
+    printf("ls : it is use to list out all file from the direcotory \n");
+    printf("stat : it is use to display statistidcal information about file\n");
+    printf("write : it is use to write the data into the file\n");
+    printf("read : it is use to the data from the file\n");
 
     // add more options here
 
@@ -833,7 +832,7 @@ int main ()
             else
             {
                  printf("Command not fount \n");
-                 printf("Please refer help option or use man command\n");
+                 printf("Please refer Help option or use man command\n");
             }
 
         }    // End of IF ICount == 1
@@ -983,6 +982,7 @@ int main ()
                  printf("Please refer Help option or use man command\n");
             }
             
+
         }   // End of IF ICount == 3
         else if(iCount == 4)
         {
@@ -997,6 +997,7 @@ int main ()
 
     } // End of While (CUSTOMiZE SHELL)
     
+
     return 0;
 
 } /// End of main

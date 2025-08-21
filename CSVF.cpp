@@ -531,19 +531,19 @@ int open_file(char *name, int permission)
     PINODE temp = head;
     int i = 0;
 
-    // Step 1: Validate parameters
+    //Validate parameters
     if (name == NULL || permission < 1 || permission > 3)
     {
         return ERR_INVALID_PARAMETER;
     }
 
-    // Step 2: Check if file exists
+    //Check if file exists
     if (IsFileExists(name) == false)
     {
         return ERR_FILE_NOT_EXISTS;
     }
 
-    // Step 3: Find inode of given file
+    // Find inode of given file
     while (temp != NULL)
     {
         if ((strcmp(name, temp->FileName) == 0) && (temp->FileType == REGULAFILE))
@@ -553,18 +553,18 @@ int open_file(char *name, int permission)
         temp = temp->next;
     }
 
-    if (temp == NULL)
-    {
-        return ERR_FILE_NOT_EXISTS;
-    }
+    // if (temp == NULL)
+    // {
+    //     return ERR_FILE_NOT_EXISTS;
+    // }
 
-    // Step 4: Check permissions
+    //Check permissions
     if ((temp->Permission != permission) && (temp->Permission != READ + WRITE))
     {
         return ERR_PERMISSION_DENIED;
     }
 
-    // Step 5: Find free UFDT entry
+    //Find free UFDT entry
     for (i = 0; i < MAXOPNEDFILES; i++)
     {
         if (uareaobj.UFDT[i] == NULL)
@@ -576,14 +576,14 @@ int open_file(char *name, int permission)
         return ERR_MAX_FILE_OPEN;
     }
 
-    // Step 6: Allocate FileTable memory
+    //Allocate FileTable memory
     uareaobj.UFDT[i] = (PFILETABLE)malloc(sizeof(FILETABLE));
     if (uareaobj.UFDT[i] == NULL)
     {
         return ERR_INVALID_PARAMETER; // allocation failed
     }
 
-    // Step 7: Initialize FileTable
+    //Initialize FileTable
     uareaobj.UFDT[i]->Count = 1;
     uareaobj.UFDT[i]->Mode = permission;
 
@@ -606,7 +606,7 @@ int open_file(char *name, int permission)
     // Update Reference Count
     (uareaobj.UFDT[i]->ptrinode->ReferenceCount)++;
 
-    // Step 8: Return File Descriptor
+    //Return File Descriptor
     return i;
 }
 
@@ -1181,6 +1181,7 @@ int main ()
                     free(EmptyBuffer);
                  }
         }
+        //Marvellout CVFS > open demo.txt 3
         else if(strcmp(Command[0], "open") == 0)
         {
                iRet = CreateFile(Command[1], atoi(Command[2]));
